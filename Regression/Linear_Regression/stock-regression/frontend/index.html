@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stock & Index Price Prediction</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+    input { display: block; margin: 5px 0; padding: 5px; width: 100%; }
+    button { margin: 10px 5px 20px 0; padding: 10px 15px; }
+    canvas { margin-top: 20px; }
+    .error { color: red; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Stock & Index Price Prediction</h1>
+  <div id="error" class="error"></div>
+  <form id="form">
+    <input type="number" step="any" name="Close_lag_1" placeholder="Close_lag_1" required>
+    <input type="number" step="any" name="Close_lag_2" placeholder="Close_lag_2" required>
+    <input type="number" step="any" name="Close_lag_3" placeholder="Close_lag_3" required>
+    <input type="number" step="any" name="MA_5" placeholder="MA_5" required>
+    <input type="number" step="any" name="MA_10" placeholder="MA_10" required>
+    <input type="number" step="any" name="Return_1" placeholder="Return_1" required>
+    <input type="number" name="DayOfWeek" placeholder="DayOfWeek (0-6)" required>
+    <input type="number" name="Month" placeholder="Month (1-12)" required>
+
+    <button type="button" id="predict_stock">Predict Stock</button>
+    <button type="button" id="predict_index">Predict Index</button>
+  </form>
+
+  <h2 id="result"></h2>
+  <canvas id="predictionChart" width="700" height="350"></canvas>
+
+<script>
+// Example historical data (replace with your actual data)
+const historicalStock = [
+  {date: '2025-09-01', close: 100},
+  {date: '2025-09-02', close: 102},
+  {date: '2025-09-03', close: 101},
+  {date: '2025-09-04', close: 103},
+  {date: '2025-09-05', close: 105}
+];
+
+const historicalIndex = [
+  {date: '2025-09-01', close: 9800},
+  {date: '2025-09-02', close: 9820},
+  {date: '2025-09-03', close: 9810},
+  {date: '2025-09-04', close: 9830},
+  {date: '2025-09-05', close: 9850}
+];
+
+const resultEl = document.getElementById('result');
+const errorEl = document.getElementById('error');
+const ctx = document.getElementById('predictionChart').getContext('2d');
+
+// Initialize chart with historical data
+let chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: historicalStock.map(d => d.date),
+    datasets: [
+      {
+        label: 'Stock',
+        data: historicalStock.map(d => d.close),
+        borderColor: 'blue',
+        borderWidth: 2,
+        fill: false
+      },
+      {
+        label: 'Index',
+        data: historicalIndex.map(d => d.close),
+        borderColor: 'green',
+        borderWidth: 2,
+        fill: false
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: true } },
+    interaction: { mode: 'nearest', intersect: true },
+    scales: {
+      x: { title: { display: true, text: 'Date' } },
+      y: { title: { display: true, text: 'Close Price' } }
+    }
+  }
+});
+
+// Validate inputs
+function validateForm() {
+  const inputs = document.querySelectorAll('#form input');
+  for (let input of inputs) {
+    if (input.value === '') {
+      errorEl.innerText = `Please enter a value for ${input.placeholder}`;
+      return false;
+    }
+  }
+  errorEl.innerText = '';
+  return true;
+}
+
+// Predict and extend the trend
+async function predict(url, type) {
+  if (!validateForm()) return;
+
+  const formData = Object.fromEntries(new FormData(document.getElementById('form')));
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(formData)
+  });
+  const data = await res.json();
+  const predicted = parseFloat(data.predicted_close).toFixed(2);
+  resultEl.innerText = `${type} Predicted Close: ${predicted}`;
+
+  // Add next date label
+  const nextDate = new Date();
+  const label = nextDate.toISOString().split('T')[0]; // YYYY-MM-DD
+  chart.data.labels.push(label);
+
+  // Extend historical trend with predicted value
+  if(type === 'Stock') {
+    chart.data.datasets[0].data.push(predicted); // extend stock trend
+    chart.data.datasets[1].data.push(null);      // index keeps previous
+  } else {
+    chart.data.datasets[1].data.push(predicted); // extend index trend
+    chart.data.datasets[0].data.push(null);      // stock keeps previous
+  }
+
+  chart.update();
+}
+
+// Button listeners
+document.getElementById('predict_stock').onclick = () => predict("http://127.0.0.1:8000/predict_stock", "Stock");
+document.getElementById('predict_index').onclick = () => predict("http://127.0.0.1:8000/predict_index", "Index");
+</script>
+</body>
+</html>
