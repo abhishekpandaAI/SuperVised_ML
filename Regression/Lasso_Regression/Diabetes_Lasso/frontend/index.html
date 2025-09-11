@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Diabetes Health Check</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f2f6fa;
+      display: flex; justify-content: center; align-items: flex-start;
+      min-height: 100vh;
+    }
+    .container {
+      width: 95%; max-width: 1100px;
+      margin: 20px;
+      display: grid; grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+    .card {
+      background: #fff; padding: 20px;
+      border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+    h2 { margin-top: 0; }
+    form label { display: block; margin-bottom: 8px; font-size: 14px; }
+    form input {
+      width: 100%; padding: 8px; margin-top: 3px;
+      border: 1px solid #ccc; border-radius: 6px;
+    }
+    button {
+      margin-top: 12px; width: 100%; padding: 10px;
+      background: #1976d2; color: white; font-size: 15px;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+    button:hover { background: #145da0; }
+    #result {
+      margin-top: 12px; font-size: 16px; font-weight: bold;
+      padding: 10px; border-radius: 6px; text-align: center;
+    }
+    .status-ok { background: #2ecc71; color: #fff; }
+    .status-pre { background: #f1c40f; color: #fff; }
+    .status-risk { background: #e74c3c; color: #fff; }
+    #history { max-height: 180px; overflow:auto; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left: Input Form -->
+    <div class="card">
+      <h2>Enter Patient Data</h2>
+      <form id="form">
+        <label>Pregnancies Month<input name="Pregnancies" type="number" required></label>
+        <label>Glucose<input name="Glucose" type="number" required></label>
+        <label>Blood Pressure<input name="BloodPressure" type="number" required></label>
+        <label>Skin Thickness<input name="SkinThickness" type="number" required></label>
+        <label>Insulin<input name="Insulin" type="number" required></label>
+        <label>BMI<input name="BMI" type="number" required></label>
+        <label>Diabetes Pedigree Function<input name="DiabetesPedigreeFunction" type="number" step="0.01" required></label>
+        <label>Age<input name="Age" type="number" required></label>
+        <button type="submit">Check Diabetes Status</button>
+      </form>
+      <div id="result">No prediction yet</div>
+      <h3>History</h3>
+      <div id="history"></div>
+    </div>
+
+    <!-- Right: Graphs -->
+    <div>
+      <div class="card">
+        <h2>Prediction Trends</h2>
+        <canvas id="trend"></canvas>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <h2>Feature Importance</h2>
+        <canvas id="feat"></canvas>
+      </div>
+    </div>
+  </div>
+
+<script>
+const apiBase = "http://127.0.0.1:8000";
+
+const trendChart = new Chart(document.getElementById('trend'), {
+  type:'line',
+  data:{ labels:[], datasets:[{label:'Probability', data:[], borderColor:'#1976d2', fill:false}] }
+});
+const featChart = new Chart(document.getElementById('feat'), {
+  type:'bar',
+  data:{ labels:[], datasets:[{data:[], backgroundColor:'#9b59b6'}] },
+  options:{ indexAxis:'y', plugins:{legend:{display:false}} }
+});
+
+async function loadFeatureImportance(){
+  const r = await fetch(apiBase+"/feature-importance");
+  if(r.ok){
+    const data = await r.json();
+    featChart.data.labels = Object.keys(data);
+    featChart.data.datasets[0].data = Object.values(data);
+    featChart.update();
+  }
+}
+loadFeatureImportance();
+
+document.getElementById('form').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const fd = Object.fromEntries(new FormData(ev.target).entries());
+  for(let k in fd) fd[k] = Number(fd[k]);
+  const r = await fetch(apiBase+"/predict",{
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fd)
+  });
+  if(r.ok){
+    const j = await r.json();
+    const resBox = document.getElementById('result');
+    resBox.textContent = `${j.predicted_class} (${(j.predicted_proba*100).toFixed(1)}%)`;
+    resBox.className = j.predicted_class==="Diabetic" ? "status-risk" :
+                       j.predicted_class==="Prediabetic" ? "status-pre" : "status-ok";
+    // update history
+    const hist = document.getElementById('history');
+    hist.innerHTML = `<div>${new Date().toLocaleTimeString()} — ${j.predicted_class} (${(j.predicted_proba*100).toFixed(1)}%)</div>` + hist.innerHTML;
+    // update trend
+    trendChart.data.labels.push(trendChart.data.labels.length+1);
+    trendChart.data.datasets[0].data.push(j.predicted_proba);
+    trendChart.update();
+  }
+});
+</script>
+</body>
+</html>
