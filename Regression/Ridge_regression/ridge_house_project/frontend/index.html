@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>House Price Prediction</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f9; }
+    h1 { color: #333; margin-bottom: 20px; }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+
+    form {
+      background: #fff; padding: 15px; border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    label { font-size: 14px; }
+    input, select {
+      width: 90%; padding: 6px; font-size: 14px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    button {
+      grid-column: span 2;
+      padding: 10px; background: #4CAF50; color: #fff;
+      border: none; border-radius: 5px; cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+
+    .right-panel {
+      display: grid; grid-template-rows: auto auto 1fr;
+      gap: 15px;
+    }
+    .tile {
+      background: #fff; padding: 15px; border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .tile h2 { margin-top: 0; font-size: 18px; }
+    #historyList { max-height: 120px; overflow-y: auto; font-size: 14px; }
+    canvas { margin-top: 10px; }
+    .stats span { margin-right: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🏠 House Price Prediction</h1>
+
+  <div class="container">
+    <!-- Left: Input Form -->
+    <form id="predictForm">
+      <label>Area <input type="number" step="0.01" name="area" required /></label>
+      <label>Bedrooms <input type="number" name="bedrooms" required /></label>
+      <label>Bathrooms <input type="number" name="bathrooms" required /></label>
+      <label>Stories <input type="number" name="stories" required /></label>
+      <label>Parking <input type="number" name="parking" required /></label>
+
+      <label>Main Road
+        <select name="mainroad"><option value="yes">Yes</option><option value="no">No</option></select>
+      </label>
+      <label>Guest Room
+        <select name="guestroom"><option value="yes">Yes</option><option value="no">No</option></select>
+      </label>
+      <label>Basement
+        <select name="basement"><option value="yes">Yes</option><option value="no">No</option></select>
+      </label>
+      <label>Hot Water
+        <select name="hotwaterheating"><option value="yes">Yes</option><option value="no">No</option></select>
+      </label>
+      <label>AC
+        <select name="airconditioning"><option value="yes">Yes</option><option value="no">No</option></select>
+      </label>
+      <label>Pref Area
+        <select name="prefarea"><option value="yes">Yes</option><option value="no">No</option></select>
+      </label>
+      <label>Furnishing
+        <select name="furnishingstatus">
+          <option value="furnished">Furnished</option>
+          <option value="semi-furnished">Semi-Furnished</option>
+          <option value="unfurnished">Unfurnished</option>
+        </select>
+      </label>
+
+      <button type="submit">Predict</button>
+    </form>
+
+    <!-- Right: Results & Visuals -->
+    <div class="right-panel">
+      <div class="tile">
+        <h2>Prediction Result</h2>
+        <p id="output">No prediction yet.</p>
+      </div>
+
+      <div class="tile">
+        <h2>History</h2>
+        <ul id="historyList"></ul>
+      </div>
+
+      <div class="tile">
+        <h2>Trends</h2>
+        <canvas id="trendChart"></canvas>
+        <div class="stats">
+          <span>Min: <span id="minVal">-</span></span>
+          <span>Max: <span id="maxVal">-</span></span>
+          <span>Avg: <span id="avgVal">-</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const history = [];
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: "Predicted Price", data: [], borderColor: "#4CAF50", fill: false }] },
+      options: { responsive: true, scales: { y: { beginAtZero: false } } }
+    });
+
+    function updateStats() {
+      if (!history.length) return;
+      const values = history.map(h => h.price);
+      document.getElementById("minVal").textContent = Math.min(...values).toFixed(2);
+      document.getElementById("maxVal").textContent = Math.max(...values).toFixed(2);
+      document.getElementById("avgVal").textContent = (values.reduce((a,b)=>a+b,0)/values.length).toFixed(2);
+    }
+
+    document.getElementById("predictForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(e.target).entries());
+      formData.area = parseFloat(formData.area);
+      formData.bedrooms = +formData.bedrooms;
+      formData.bathrooms = +formData.bathrooms;
+      formData.stories = +formData.stories;
+      formData.parking = +formData.parking;
+
+      const res = await fetch("http://127.0.0.1:8000/predict", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(formData)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById("output").textContent = `Predicted Price: ₹ ${data.predicted_price.toLocaleString()}`;
+
+        history.push({input: formData, price: data.predicted_price});
+        const li = document.createElement("li");
+        li.textContent = `₹ ${data.predicted_price.toLocaleString()} (Area: ${formData.area}, Beds: ${formData.bedrooms})`;
+        document.getElementById("historyList").appendChild(li);
+
+        chart.data.labels.push(history.length);
+        chart.data.datasets[0].data.push(data.predicted_price);
+        chart.update();
+
+        updateStats();
+      } else {
+        document.getElementById("output").textContent = "Error predicting price.";
+      }
+    });
+  </script>
+</body>
+</html>

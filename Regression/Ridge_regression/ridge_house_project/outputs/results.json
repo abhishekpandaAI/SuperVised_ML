@@ -1,0 +1,189 @@
+{
+  "rmse": 1333155.284544472,
+  "r2": 0.648377027900868,
+  "best_alpha": 10.0,
+  "sample_predictions": [
+    {
+      "actual": 4060000.0,
+      "predicted": 5208550.274654701
+    },
+    {
+      "actual": 6650000.0,
+      "predicted": 7149190.332508043
+    },
+    {
+      "actual": 3710000.0,
+      "predicted": 3127265.227384235
+    },
+    {
+      "actual": 6440000.0,
+      "predicted": 4594872.408684263
+    },
+    {
+      "actual": 2800000.0,
+      "predicted": 3320383.680446375
+    },
+    {
+      "actual": 4900000.0,
+      "predicted": 3566876.15254442
+    },
+    {
+      "actual": 5250000.0,
+      "predicted": 5600871.020468781
+    },
+    {
+      "actual": 4543000.0,
+      "predicted": 6346940.189194209
+    },
+    {
+      "actual": 2450000.0,
+      "predicted": 2778495.8872722345
+    },
+    {
+      "actual": 3353000.0,
+      "predicted": 2672563.6170674376
+    },
+    {
+      "actual": 10150000.0,
+      "predicted": 9549587.531102719
+    },
+    {
+      "actual": 2660000.0,
+      "predicted": 2826525.5418740315
+    },
+    {
+      "actual": 3360000.0,
+      "predicted": 3171973.4818571964
+    },
+    {
+      "actual": 3360000.0,
+      "predicted": 3430839.3982299
+    },
+    {
+      "actual": 2275000.0,
+      "predicted": 3711478.5704877917
+    },
+    {
+      "actual": 2660000.0,
+      "predicted": 5286557.087040863
+    },
+    {
+      "actual": 2660000.0,
+      "predicted": 3055898.4533426883
+    },
+    {
+      "actual": 7350000.0,
+      "predicted": 4785442.303994851
+    },
+    {
+      "actual": 2940000.0,
+      "predicted": 4383863.831388836
+    },
+    {
+      "actual": 2870000.0,
+      "predicted": 3585803.125261876
+    }
+  ],
+  "feature_coeffs": [
+    {
+      "feature": "num__area",
+      "coefficient": 515102.83597677475,
+      "abs_coef": 515102.83597677475
+    },
+    {
+      "feature": "num__bathrooms",
+      "coefficient": 513781.3744262345,
+      "abs_coef": 513781.3744262345
+    },
+    {
+      "feature": "cat__airconditioning_no",
+      "coefficient": -374279.24627798767,
+      "abs_coef": 374279.24627798767
+    },
+    {
+      "feature": "cat__airconditioning_yes",
+      "coefficient": 374279.24627798627,
+      "abs_coef": 374279.24627798627
+    },
+    {
+      "feature": "num__stories",
+      "coefficient": 347888.9470003447,
+      "abs_coef": 347888.9470003447
+    },
+    {
+      "feature": "cat__prefarea_no",
+      "coefficient": -298391.7779456103,
+      "abs_coef": 298391.7779456103
+    },
+    {
+      "feature": "cat__prefarea_yes",
+      "coefficient": 298391.77794560796,
+      "abs_coef": 298391.77794560796
+    },
+    {
+      "feature": "cat__hotwaterheating_no",
+      "coefficient": -269881.9246605432,
+      "abs_coef": 269881.9246605432
+    },
+    {
+      "feature": "cat__hotwaterheating_yes",
+      "coefficient": 269881.92466054,
+      "abs_coef": 269881.92466054
+    },
+    {
+      "feature": "cat__furnishingstatus_unfurnished",
+      "coefficient": -225048.31960119653,
+      "abs_coef": 225048.31960119653
+    },
+    {
+      "feature": "num__parking",
+      "coefficient": 198599.61831158667,
+      "abs_coef": 198599.61831158667
+    },
+    {
+      "feature": "cat__basement_yes",
+      "coefficient": 191036.10300601143,
+      "abs_coef": 191036.10300601143
+    },
+    {
+      "feature": "cat__basement_no",
+      "coefficient": -191036.10300601122,
+      "abs_coef": 191036.10300601122
+    },
+    {
+      "feature": "cat__mainroad_yes",
+      "coefficient": 176522.85022879863,
+      "abs_coef": 176522.85022879863
+    },
+    {
+      "feature": "cat__mainroad_no",
+      "coefficient": -176522.85022879814,
+      "abs_coef": 176522.85022879814
+    },
+    {
+      "feature": "cat__furnishingstatus_furnished",
+      "coefficient": 174155.43184274272,
+      "abs_coef": 174155.43184274272
+    },
+    {
+      "feature": "cat__guestroom_yes",
+      "coefficient": 117406.3488898908,
+      "abs_coef": 117406.3488898908
+    },
+    {
+      "feature": "cat__guestroom_no",
+      "coefficient": -117406.34888988984,
+      "abs_coef": 117406.34888988984
+    },
+    {
+      "feature": "num__bedrooms",
+      "coefficient": 66158.32576454713,
+      "abs_coef": 66158.32576454713
+    },
+    {
+      "feature": "cat__furnishingstatus_semi-furnished",
+      "coefficient": 50892.88775848152,
+      "abs_coef": 50892.88775848152
+    }
+  ]
+}
