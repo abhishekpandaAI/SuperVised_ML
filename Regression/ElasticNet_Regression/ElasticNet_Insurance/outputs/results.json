@@ -1,0 +1,8 @@
+{
+  "rmse": 5800.747425732789,
+  "r2": 0.7832596094420997,
+  "best_params": {
+    "elastic__alpha": 0.01,
+    "elastic__l1_ratio": 0.8
+  }
+}
