@@ -1,0 +1,39 @@
+# Virtual environment
+venv/
+ENV/
+env/
+*.env
+
+# Python cache & compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.joblib
+*.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode / PyCharm settings
+.vscode/
+.idea/
+
+# Logs & outputs
+*.log
+logs/
+outputs/*.png
+outputs/*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build / dist
+build/
+dist/
+*.egg-info/
+
+# Node frontend (if extended later)
+node_modules/

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Loan Risk Prediction 💰</title>
+  <style>
+    body { font-family: Arial; background:#f5f8fa; padding:20px; }
+    .container { max-width: 1000px; margin:auto; display:flex; gap:20px; }
+    form { flex:1; background:#fff; padding:20px; border-radius:8px; box-shadow:0 3px 6px rgba(0,0,0,0.1); }
+    input, select { width:100%; padding:6px; margin:5px 0; }
+    button { margin-top:10px; width:100%; padding:10px; background:#0077cc; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+    .result { flex:1; background:#fff; padding:20px; border-radius:8px; box-shadow:0 3px 6px rgba(0,0,0,0.1); }
+    canvas { margin-top:20px; }
+  </style>
+</head>
+<body>
+  <h1>💰 Loan Default Risk Prediction</h1>
+  <div class="container">
+    <!-- Form for user input -->
+    <form id="form">
+      <label>Age <input type="number" name="Age" required></label>
+      <label>Annual Income <input type="number" name="AnnualIncome" required></label>
+      <label>Credit Score <input type="number" name="CreditScore" required></label>
+
+      <label>Employment Status 
+        <select name="EmploymentStatus">
+          <option>Employed</option>
+          <option>Self-Employed</option>
+          <option>Unemployed</option>
+        </select>
+      </label>
+
+      <label>Education Level 
+        <select name="EducationLevel">
+          <option>High School</option>
+          <option>Associate</option>
+          <option>Bachelor</option>
+          <option>Master</option>
+          <option>PhD</option>
+        </select>
+      </label>
+
+      <label>Loan Amount <input type="number" name="LoanAmount" required></label>
+      <label>Loan Duration (months) <input type="number" name="LoanDuration" required></label>
+
+      <label>Marital Status 
+        <select name="MaritalStatus">
+          <option>Single</option>
+          <option>Married</option>
+          <option>Divorced</option>
+        </select>
+      </label>
+
+      <label>Dependents <input type="number" name="NumberOfDependents" required></label>
+      <label>Debt-to-Income Ratio <input type="number" step="0.01" name="DebtToIncomeRatio" required></label>
+      <label>Previous Loan Defaults <input type="number" name="PreviousLoanDefaults" required></label>
+      <label>Net Worth <input type="number" name="NetWorth" required></label>
+
+      <button type="submit">Predict Risk</button>
+    </form>
+
+    <!-- Results and charts -->
+    <div class="result">
+      <h2>Prediction</h2>
+      <p id="result">No prediction yet</p>
+      <canvas id="riskChart" width="400" height="200"></canvas>
+      <h2>📊 Top Features</h2>
+      <canvas id="featChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const api = "http://127.0.0.1:8000";
+
+// Map raw feature names -> clean labels
+function cleanFeatureName(name) {
+  return name
+    .replace("num__", "")                // remove num__ prefix
+    .replace("cat__", "")                // remove cat__ prefix
+    .replace(/_/g, " ")                  // underscores -> spaces
+    .replace("EmploymentStatus", "Employment")
+    .replace("EducationLevel", "Education")
+    .replace("MaritalStatus", "Marital")
+    .trim();
+}
+
+// Handle prediction form
+document.getElementById('form').onsubmit = async(e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  for (let k in data) if (!isNaN(data[k])) data[k] = +data[k];
+
+  const r = await fetch(api+"/predict", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(data)
+  });
+  const j = await r.json();
+
+  document.getElementById("result").innerText = `Score: ${j.predicted_score} → ${j.status}`;
+
+  // Risk chart (doughnut)
+  new Chart(document.getElementById("riskChart"), {
+    type: 'doughnut',
+    data: { labels:["Risk Score","Remaining"],
+      datasets:[{ data:[j.predicted_score, 100-j.predicted_score],
+                  backgroundColor:["#e74c3c","#ecf0f1"] }] }
+  });
+};
+
+// Load feature importance on page load
+async function loadFeatureImportance(){
+  const r = await fetch(api+"/feature_importance");
+  const j = await r.json();
+  if(j.error) { console.error(j.error); return; }
+
+  const top = j.importance.slice(0,5); // top 5 features
+  new Chart(document.getElementById("featChart"), {
+    type: 'bar',
+    data: {
+      labels: top.map(f=>cleanFeatureName(f.feature)),
+      datasets:[{
+        label:"Importance",
+        data: top.map(f=>f.score),
+        backgroundColor:"#3498db"
+      }]
+    },
+    options: { scales:{ y:{ beginAtZero:true } } }
+  });
+}
+loadFeatureImportance();
+</script>
+</body>
+</html>

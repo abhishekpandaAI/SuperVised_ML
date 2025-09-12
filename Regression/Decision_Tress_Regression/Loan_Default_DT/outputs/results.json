@@ -1,0 +1,8 @@
+{
+  "rmse": 4.9219287178000215,
+  "r2": 0.5995694736371486,
+  "best_params": {
+    "tree__max_depth": 8,
+    "tree__min_samples_leaf": 10
+  }
+}
