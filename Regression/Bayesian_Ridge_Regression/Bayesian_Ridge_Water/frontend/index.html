@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Water Quality Prediction</title>
+  <style>
+    body { font-family: Arial; background: #f4f7fb; margin: 20px; }
+    .container { display: flex; gap: 20px; max-width: 1200px; margin: auto; }
+    .left, .right { flex: 1; }
+    .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    label { display:block; margin:8px 0 4px; }
+    input { width: 100%; padding: 6px; border:1px solid #ccc; border-radius:6px; outline:none; }
+    input.valid { border: 2px solid #2ecc71; } /* green border */
+    input.invalid { border: 2px solid #e74c3c; } /* red border */
+    button { margin-top:12px; padding:10px; background:#3498db; color:white; border:none; border-radius:6px; cursor:pointer; width:100%; }
+    #result { margin-top: 12px; font-weight:bold; font-size:18px; }
+    ul { margin-top: 10px; padding-left: 20px; }
+    li { color:#555; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #3498db; color: white; }
+    canvas { margin-top:20px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Left side -->
+    <div class="left">
+      <h1>🌊 Water Quality Prediction</h1>
+      <div class="card">
+        <h2>Enter Water Test Parameters</h2>
+        <form id="form">
+          <label>pH<input type="number" step="0.01" name="ph" required></label>
+          <label>Hardness<input type="number" step="0.01" name="Hardness" required></label>
+          <label>Solids<input type="number" step="0.01" name="Solids" required></label>
+          <label>Chloramines<input type="number" step="0.01" name="Chloramines" required></label>
+          <label>Sulfate<input type="number" step="0.01" name="Sulfate" required></label>
+          <label>Conductivity<input type="number" step="0.01" name="Conductivity" required></label>
+          <label>Organic_carbon<input type="number" step="0.01" name="Organic_carbon" required></label>
+          <label>Trihalomethanes<input type="number" step="0.01" name="Trihalomethanes" required></label>
+          <label>Turbidity<input type="number" step="0.01" name="Turbidity" required></label>
+          <button type="submit">Predict</button>
+        </form>
+        <div id="result">No prediction yet</div>
+        <ul id="reasons"></ul>
+      </div>
+
+      <div class="card">
+        <h2>📈 Prediction History</h2>
+        <canvas id="historyChart"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>📊 Safe vs Unsafe Count</h2>
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Right side -->
+    <div class="right">
+      <div class="card">
+        <h2>✅ WHO Water Quality Guidelines</h2>
+        <table>
+          <tr><th>Parameter</th><th>Safe Range / Limit</th></tr>
+          <tr><td>pH</td><td>6.5 – 8.5</td></tr>
+          <tr><td>Hardness</td><td>≤ 300 mg/L</td></tr>
+          <tr><td>Solids (TDS)</td><td>≤ 500 mg/L (WHO, some up to 1000)</td></tr>
+          <tr><td>Chloramines</td><td>≤ 4 mg/L</td></tr>
+          <tr><td>Sulfate</td><td>≤ 250 mg/L</td></tr>
+          <tr><td>Conductivity</td><td>~50 – 500 µS/cm</td></tr>
+          <tr><td>Organic Carbon</td><td>≤ 5 mg/L</td></tr>
+          <tr><td>Trihalomethanes</td><td>≤ 80 µg/L</td></tr>
+          <tr><td>Turbidity</td><td>≤ 5 NTU (ideally &lt;1)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+const api="http://127.0.0.1:8000";
+
+// --- WHO safe ranges ---
+const safeRanges = {
+  ph: val => val >= 6.5 && val <= 8.5,
+  Hardness: val => val <= 300,
+  Solids: val => val <= 500,
+  Chloramines: val => val <= 4,
+  Sulfate: val => val <= 250,
+  Conductivity: val => val >= 50 && val <= 500,
+  Organic_carbon: val => val <= 5,
+  Trihalomethanes: val => val <= 80,
+  Turbidity: val => val <= 5
+};
+
+// --- Live validation ---
+document.querySelectorAll("input").forEach(inp=>{
+  inp.addEventListener("input",()=>{
+    const name = inp.name;
+    const val = parseFloat(inp.value);
+    if(safeRanges[name] && !isNaN(val)){
+      if(safeRanges[name](val)){
+        inp.classList.add("valid");
+        inp.classList.remove("invalid");
+      } else {
+        inp.classList.add("invalid");
+        inp.classList.remove("valid");
+      }
+    } else {
+      inp.classList.remove("valid","invalid");
+    }
+  });
+});
+
+// --- Charts ---
+let historyScores = [];
+let historyLabels = [];
+let safeCount = 0, unsafeCount = 0;
+
+const historyCtx = document.getElementById("historyChart");
+const historyChart = new Chart(historyCtx, {
+  type: "line",
+  data: { labels: [], datasets: [{ label: "Predicted Potability Score", data: [], borderColor: "#3498db", fill: false, tension: 0.2 }] },
+  options: { responsive: true, scales: { y: { min:0, max:1 } } }
+});
+
+const statusCtx = document.getElementById("statusChart");
+const statusChart = new Chart(statusCtx, {
+  type: "bar",
+  data: { labels: ["Safe 🚰", "Unsafe ⚠️"], datasets: [{ label: "Count", data: [0, 0], backgroundColor: ["#2ecc71", "#e74c3c"] }] },
+  options: { responsive: true, scales: { y: { beginAtZero:true } } }
+});
+
+// --- Form Submit ---
+document.getElementById('form').onsubmit=async(e)=>{
+  e.preventDefault();
+  const data=Object.fromEntries(new FormData(e.target).entries());
+  for(let k in data){data[k]=+data[k];}
+
+  const r=await fetch(api+"/predict",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+  const j=await r.json();
+
+  document.getElementById("result").textContent = `Predicted Score: ${j.predicted_score} → ${j.status}`;
+
+  const reasonsList=document.getElementById("reasons");
+  reasonsList.innerHTML="";
+  j.reasons.forEach(r=>{
+    const li=document.createElement("li");
+    li.textContent=r;
+    reasonsList.appendChild(li);
+  });
+
+  historyLabels.push("Sample "+(historyLabels.length+1));
+  historyScores.push(j.predicted_score);
+  historyChart.data.labels = historyLabels;
+  historyChart.data.datasets[0].data = historyScores;
+  historyChart.update();
+
+  if(j.status.includes("Safe")) safeCount++; else unsafeCount++;
+  statusChart.data.datasets[0].data = [safeCount, unsafeCount];
+  statusChart.update();
+};
+</script>
+</body>
+</html>
