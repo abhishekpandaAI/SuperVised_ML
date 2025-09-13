@@ -1,0 +1,12 @@
+pandas
+numpy
+scikit-learn
+joblib
+matplotlib
+fastapi
+uvicorn
+python-multipart
+jinja2
+python-dotenv
+plotly
+shap

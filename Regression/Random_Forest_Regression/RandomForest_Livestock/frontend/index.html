@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>🐄 Gocarin Milk Yield Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#f5f8fa; }
+    header { display:flex; align-items:center; gap:15px; padding:20px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    header img { height:50px; }
+    .card { margin-bottom:20px; }
+    h2 { font-size:1.3rem; }
+    .chart-container { position: relative; height:300px; }
+    .nav-tabs { margin-bottom:20px; }
+    #result { animation: pulse 1.5s infinite alternate; }
+
+    /* Overlay loader */
+    .loader-overlay {
+      position: fixed; top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(255,255,255,0.9);
+      display: none;
+      justify-content:center; align-items:center;
+      flex-direction: column;
+      z-index: 2000;
+    }
+    .loader-overlay img { height:140px; margin-bottom:15px; }
+    .loader-text { font-weight:bold; font-size:1.2rem; color:#27ae60; animation: pulse 1.5s infinite alternate; }
+
+    @keyframes pulse { 0%{transform:scale(1);opacity:0.7;} 100%{transform:scale(1.1);opacity:1;} }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="assets/gocarin.png" alt="Gocarin Logo">
+    <h1 class="h3">🐄 Gocarin Livestock Milk Dashboard</h1>
+  </header>
+
+  <!-- Loaders -->
+  <div id="loadingFarmer" class="loader-overlay">
+    <img src="assets/cow-milking.gif" alt="Milking cow">
+    <p class="loader-text">🐄 Cow is being milked... please wait</p>
+  </div>
+  <div id="loadingCEO" class="loader-overlay">
+    <img src="assets/cow-herd.gif" alt="Walking herd">
+    <p class="loader-text">👨‍💼 Fetching herd summary... please wait</p>
+  </div>
+
+  <div class="container my-4">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="dashboardTabs">
+      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#farmerView">Farmer View</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ceoView">CEO Summary</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- Farmer View -->
+      <div class="tab-pane fade show active" id="farmerView">
+        <div class="row g-4">
+          <!-- Form -->
+          <div class="col-lg-4">
+            <div class="card p-3 shadow-sm">
+              <h2>Enter Cow Details</h2>
+              <form id="form">
+                <label class="form-label">Cow ID <input type="text" class="form-control" name="Cow_ID" required></label>
+                <label class="form-label">Feed (kg) <input type="number" step="0.1" class="form-control" name="Feed_kg" required></label>
+                <label class="form-label">Temperature (°C) <input type="number" step="0.1" class="form-control" name="Temp_C" required></label>
+                <label class="form-label">Humidity (%) <input type="number" step="0.1" class="form-control" name="Humidity" required></label>
+                <label class="form-label">Milking Time (min) <input type="number" step="1" class="form-control" name="Milking_Time_min" required></label>
+                <button type="submit" class="btn btn-success w-100 mt-3">Predict Yield</button>
+              </form>
+              <p id="result" class="fw-bold mt-3 text-primary">No prediction yet</p>
+            </div>
+          </div>
+
+          <!-- Farmer charts -->
+          <div class="col-lg-8">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="card p-3 shadow-sm">
+                  <h2>📊 Predicted Yield</h2>
+                  <div class="chart-container"><canvas id="yieldChart"></canvas></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card p-3 shadow-sm">
+                  <h2>📈 Feature Importance</h2>
+                  <div class="chart-container"><canvas id="featChart"></canvas></div>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="card p-3 shadow-sm">
+                  <h2>📅 Yield Trends (Benchmark: 20L)</h2>
+                  <div class="chart-container"><canvas id="trendChart"></canvas></div>
+                </div>
+              </div>
+              <!-- History -->
+              <div class="col-12">
+                <div class="card p-3 shadow-sm">
+                  <h2>🕒 Prediction History</h2>
+                  <ul id="historyList" class="list-group"></ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CEO View -->
+      <div class="tab-pane fade" id="ceoView">
+        <div class="row g-4">
+          <div class="col-md-4"><div class="card p-3 shadow-sm text-center"><h2>📊 Avg Daily Yield</h2><h3 id="avgYield">--</h3></div></div>
+          <div class="col-md-4"><div class="card p-3 shadow-sm text-center"><h2>🏆 Best Cow</h2><h3 id="bestCow">--</h3></div></div>
+          <div class="col-md-4"><div class="card p-3 shadow-sm text-center"><h2>⚠️ Underperforming</h2><h3 id="lowCows">--</h3></div></div>
+          <div class="col-12"><div class="card p-3 shadow-sm"><h2>📊 Herd-Level Performance</h2><div class="chart-container"><canvas id="herdChart"></canvas></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const api = "http://127.0.0.1:8000";
+let history = [];
+
+// --- Farmer Predict ---
+document.getElementById('form').onsubmit = async(e) => {
+  e.preventDefault();
+  document.getElementById("loadingFarmer").style.display = "flex";
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  for (let k in data) if (!isNaN(data[k])) data[k] = +data[k];
+  const r = await fetch(api+"/predict", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
+  const j = await r.json();
+
+  setTimeout(() => {
+    document.getElementById("loadingFarmer").style.display = "none";
+    let msg = j.predicted_yield >= 20 ? "✅ Great yield today!" : j.predicted_yield >= 15 ? "⚠️ Decent yield." : "❌ Low yield.";
+    document.getElementById("result").innerText = `Cow ${j.cow} → ${j.predicted_yield} ${j.unit} | ${msg}`;
+
+    // Chart
+    new Chart(document.getElementById("yieldChart"), {
+      type:'doughnut',
+      data:{labels:["Yield","Gap to 30L"],datasets:[{data:[j.predicted_yield,30-j.predicted_yield],backgroundColor:["#27ae60","#ecf0f1"]}]}
+    });
+
+    // Save history
+    history.unshift(`Cow ${j.cow} → ${j.predicted_yield}L`);
+    if(history.length > 5) history.pop();
+    document.getElementById("historyList").innerHTML = history.map(h=>`<li class="list-group-item">${h}</li>`).join("");
+  }, 2000);
+};
+
+// --- Feature Importance ---
+async function loadFeatureImportance(){
+  const r = await fetch(api+"/feature_importance"); const j = await r.json();
+  const top = j.importance.map(f=>({feature:f.feature.replace("num__","").replace("cat__",""), score:f.score})).slice(0,5);
+  new Chart(document.getElementById("featChart"), {
+    type:'bar',
+    data:{labels:top.map(f=>f.feature),datasets:[{label:"Importance",data:top.map(f=>f.score),backgroundColor:"#2980b9"}]},
+    options:{scales:{y:{beginAtZero:true}}}
+  });
+}
+loadFeatureImportance();
+
+// --- Trends ---
+async function loadTrends(){
+  const r = await fetch(api+"/trends"); const j = await r.json();
+  new Chart(document.getElementById("trendChart"), {
+    type:'line',
+    data:{labels:j.dates,
+      datasets:[...j.cows.map(cow=>({label:cow.id,data:cow.yields.map(y=>y||0),borderColor:`hsl(${Math.random()*360},70%,50%)`,fill:false,tension:0.3})),
+        {label:"Benchmark 20L",data:Array(j.dates.length).fill(20),borderColor:"red",borderDash:[5,5],pointRadius:0}]}
+  });
+}
+loadTrends();
+
+// --- CEO Summary ---
+async function loadCEO(){
+  document.getElementById("loadingCEO").style.display = "flex";
+  const r = await fetch(api+"/ceo_summary"); const j = await r.json();
+  setTimeout(() => {
+    document.getElementById("loadingCEO").style.display = "none";
+    document.getElementById("avgYield").innerText = j.avg_yield+" L";
+    document.getElementById("bestCow").innerText = j.best_cow.id+" ("+j.best_cow.yield+"L)";
+    document.getElementById("lowCows").innerText = j.low_cows.join(", ")||"None 🎉";
+    new Chart(document.getElementById("herdChart"), {type:'bar',data:{labels:j.cows.map(c=>c.id),datasets:[{label:"Yield",data:j.cows.map(c=>c.yield),backgroundColor:"#16a085"}]}});
+  }, 2000);
+}
+loadCEO();
+</script>
+</body>
+</html>

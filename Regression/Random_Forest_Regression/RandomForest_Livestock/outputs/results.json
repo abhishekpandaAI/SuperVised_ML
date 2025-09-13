@@ -1,0 +1,9 @@
+{
+  "rmse": 1.1080966330161885,
+  "r2": 0.7712128289192924,
+  "best_params": {
+    "rf__max_depth": 8,
+    "rf__min_samples_leaf": 5,
+    "rf__n_estimators": 100
+  }
+}
